@@ -86,16 +86,20 @@ Part of your task is to extract the generated result file from the binary.
 By default, the test proxy will write the result file to it's local file system on a successful test.
 This file is written to (w.r.t the container's file system): `/artifact/test1.result.json`.
 
-Couple of hints:
-1. Use `docker cp`.
-2. Mount a directory into the container at the appropriate location.
-
 ### Submission
 
-You must create a public github repository for your submission. Please check your solution code into this repository.
-Please also include the generated solution file in the repository by uploading the json file as a release artifact.
+You must clone this repository for your submission. Please check your solution code into the clone.
+Please also include the generated solution file in the repository by uploading the generated json file to your clone (expect the file size to be ~9MB).
+
+Create a pull request to this repository from your solution. Please note the following:
+1. The title of the pull request must be of the form `[SUBMISSION] <language used> <date in YYYY-MM-DD> <github username>`. Example: [SUBMISSION] Python 2024-05-12 randomusername
+2. Please make sure your github profile includes some contact information so that we can reach out if required.
 
 Bonus points for well written commit messages.
+
+### Problems
+
+If you encounter any problems, please open an issue on this repository.
 
 ### Example messages:
 
