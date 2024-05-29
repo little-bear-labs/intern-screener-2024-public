@@ -1,159 +1,162 @@
-### Intro
+# Documentation for the Rust Codebase
 
-Hi,
-This screener is designed to test a few basic skills:
-1. Reading and writing over a network connection (TCP to make things easy).
-2. Serializing, deserializing message formats (JSON in this case).
-3. Data structures.
-4. Few shell commands.
-5. Basic container usage.
+## Overview
 
-You need to write a client node that wishes to join some existing network and discover the whole network. To abstract away the complications
-of connecting to multiple nodes in the network, you are provided with a proxy (test executable) to manage connections and route
-messages on behalf of your node.
+This project consists of several Rust modules designed to interact with a Docker container, establish a TCP connection to a server, query the network, gather topology data, and extract results from the container. Below is a detailed breakdown of each component, its responsibilities, and how they interact.
 
-You can run the proxy by executing the provided test executable (feel free to reverse engineer or analyse network traffic).
-The proxy accepts a single TCP connection from your client and sends an initial Init message:
-```JSON
-{
-    "sender_id": "<bootstrap_id>",
-    "receiver_id": "<your_id>",
-    "msg_id": "",
-    "type": "init"
-}
-```
-Assume that by the time the proxy sends you the init message, it has already made connections to other peers.
-There are two accepted rpcs:
-1. Query
-2. Topology
+## Modules
 
-The query operation is as follows:
-```JSON
-{
-    "sender_id": "<your_id>",
-    "receiver_id": "<some-node-id>",
-    "msg_id": "<randomly generated string>",
-    "type": "query"
-}
-```
-This should return the following response, given the `sender_id` and `received_id` exist in the network. Do not
-try to masquerade as a different node. This will make the proxy crash.
-```JSON
-{
-    "sender_id": "<your_id>",
-    "receiver_id": "<some-node-id>",
-    "msg_id": "<randomly generated string>",
-    "type": "neighbors"
-    "n": JSON Array of strings
-}
-```
-Each string in `n` is an ID of some node in the network to which the receiver has a direct connection.
-You must use the `Query` rpc to discover all connected nodes in the network.
+### 1. Main Module( `src/main.rs` )
 
-Once you have completed this task, you must use the `Topology` rpc to push your result to the proxy
-where it may be used to optimally route future requests.
-```JSON
-{
-    "sender_id": "<your_id>",
-    "receiver_id": "<some-node-id>",
-    "msg_id": "<randomly generated string>",
-    "type": "topology",
-    "topology": {
-        "<node_id>": JSON Array of neighboring nodes,
-        ...
-    }
-}
-```
+This module is the main entry point of the application. It initializes the logger, establishes a TCP connection to the proxy server, discovers the network topology, sends the discovered topology to the proxy server, extracts a result file from a Docker container, and exits gracefully.
 
-At the end of the test (once you have written the topology message and the binary has exited), a result file
-called `test1.result.json` will be generated.
+### `main() -> std::io::Result<()>`:
 
-Hint: To know what connection the proxy has already made on your behalf, you can query the system for your own id.
+- Initializes the logger using `env_logger` and sets the log level to `Info`.
+- Establishes a TCP connection to the proxy server at `127.0.0.1:12080`.
+- Discovers the network topology by querying nodes recursively.
+- Sends the discovered network topology to the proxy server.
+- Waits for a short duration before exiting.
+- Extracts a result file from a Docker container.
+- Exits the application successfully.
 
-### Running the proxy
-Due to issues with compatibility across different platforms, we have decided to release the test as a docker image.
-You are required to set up Docker on your system to pass this test. Please follow the guidelines for your platform 
-provided at https://docs.docker.com/desktop/.
+### 2. Library file( `src/lib.rs` )
 
-The docker image may be pulled from:
-```docker pull ghcr.io/little-bear-labs/lbl-test-proxy:latest```
+This file defines the public modules `docker`, `messages`, `network`, and `progress`.
 
-You can run the test as follows:
-```docker run -p 12080:12080 ghcr.io/little-bear-labs/lbl-test-proxy:latest```
-This will make the test program accessible via port 12080 on localhost.
+### 3. Docker Module( `src/docker.rs` )
 
-Part of your task is to extract the generated result file from the binary.
-By default, the test proxy will write the result file to it's local file system on a successful test.
-This file is written to (w.r.t the container's file system): `/artifact/test1.result.json`.
+This module handles interactions with Docker, specifically retrieving the container ID and extracting files from the container.
 
-### Submission
+#### `get_container_id() -> Option<String>`
+- Retrieves the latest Docker container ID based on the image name.
+- As the image is stopped after every run we have to get the lastest stopped image id Ex., *93ba9f52e9ea*
 
-You must clone this repository for your submission. Please check your solution code into the clone.
-Please also include the generated solution file in the repository by uploading the generated json file to your clone (expect the file size to be ~9MB).
+#### `extract_result_file()`
 
-Create a pull request to this repository from your solution. Please note the following:
-1. The title of the pull request must be of the form `[SUBMISSION] <language used> <date in YYYY-MM-DD> <github username>`. Example: [SUBMISSION] Python 2024-05-12 randomusername
-2. Please make sure your github profile includes some contact information so that we can reach out if required.
+- Retrieves the container ID of the latest container based on a specific image.
+- Copies the result file from the Docker container to the local directory.
 
-Bonus points for well written commit messages.
+### 4. Messages Module( `src/messages.rs` )
 
-### Problems
+Defines data structures for various message types used in the network communication, and provides serialization and deserialization capabilities.
 
-If you encounter any problems, please open an issue on this repository.
+- Data Structures:
 
-### Example messages:
+    - `InitMessage`: Represents the initial message structure.
+    - `QueryMessage`: Represents a query message sent to a node.
+    - `NeighborsResponse`: Represents the response message containing neighbors of a node.
+    - `TopologyMessage`: Represents the message containing the network topology.
 
-Init message from node `bootstrap`: 
-```JSON
-{
-  "sender_id": "bootstrap",
-  "receiver_id": "a",
-  "msg_id": "",
-  "type": "init"
-}
-```
+### 5. Network Module( `src/network.rs` )
 
-Query node `b` for its neighbors: 
-```JSON
-{
-  "sender_id": "a",
-  "receiver_id": "b",
-  "msg_id": "msg_id",
-  "type": "query"
-}
-```
+This module contains functions for network-related operations, including establishing a TCP connection, querying nodes, discovering network topology, and sending the topology to the proxy server.
 
-Neighbors response from node `b`: 
-```JSON
-{
-  "sender_id": "b",
-  "receiver_id": "a",
-  "msg_id": "msg_id",
-  "type": "neighbors",
-  "n": [
-    "c",
-    "d",
-    "a"
-  ]
-}
-```
+#### `connect_and_read_init(address: &str) -> std::io::Result<(TcpStream, InitMessage)>`
 
-Topology: 
-```JSON
-{
-  "sender_id": "a",
-  "receiver_id": "",
-  "msg_id": "msg_id",
-  "type": "topology",
-  "topology": {
-    "a": [
-      "b"
-    ],
-    "b": [
-      "c",
-      "a",
-      "d"
-    ]
-  }
-}
-```
+- Establishes a TCP connection to the specified address.
+- Reads the initialization message from the stream.
+
+#### `query_and_response(stream: &mut TcpStream, sender_id: &str, receiver_id: &str) -> std::io::Result<NeighborsResponse>`
+
+- Sends a query message to a node specified by `receiver_id`.
+- Receives the node's neighbors' response.
+
+#### `discover_network(stream: &mut TcpStream, your_id: &str, pb: Arc<Mutex<ProgressBar>>) -> io::Result<HashMap<String, Vec<String>>>`
+
+- Discovers the network topology by recursively querying nodes and gathering responses.
+- Utilizes a progress bar to indicate the discovery progress.
+
+#### `send_topology(stream: &mut TcpStream, your_id: &str, topology: HashMap<String, Vec<String>>) -> std::io::Result<()>`
+
+- Sends the discovered network topology to the proxy server.
+
+### 6. Progress Module( `src/progress.rs` )
+
+Manages the progress bar used during the network discovery process.
+
+#### `initialize_progress_bar() -> Arc<Mutex<ProgressBar>>`
+
+- Initializes a progress bar with a spinner style.
+
+### 7. Integration Test( `tests/integration_test.rs` )
+
+Tests the entire flow of starting a Docker container, establishing a TCP connection, discovering the network topology, sending the topology, and extracting the result file.
+
+#### `start_discover_container() -> Child`
+- Starts the Docker container.
+
+#### `stop_docker_container(child: &mut Child)`
+- Stops the Docker container.
+
+#### `test_network_discovery_and_result_extraction()`
+- Comprehensive test function that:
+    - Starts a Docker container.
+    - Establishes a TCP connection to the proxy server running in the container.
+    - Discovers the network topology.
+    - Sends the discovered topology to the proxy server.
+    - Extracts a result file from the Docker container.
+    - Stops the Docker container.
+    - Asserts that the result file exists and removes it after the test.
+
+## Installation and Running the application 
+
+### Dependencies:
+1. **Rust Toolchain** - Make sure you have Rust installed. You can install it via [rustup](https://rustup.rs/).
+2. **Docker** - Ensure Docker is installed and running on your system.
+
+### Installation:
+1. Clone the project repository:
+    ```bash
+    git clone https://github.com/AtharvaWaghchoure/intern-screener-2024-public
+    ```
+2. Navigate to the project directory:
+    ```bash
+    cd intern-screener-2024-public
+    ```
+3. Build the project using Cargo (Rust's package manager):
+    ```bash
+    cargo build --release
+    ```
+4. Pull the docker image for the Proxy image:
+    ```bash
+    docker pull ghcr.io/little-bear-labs/lbl-test-proxy:latest
+    ```
+
+### Running the Application:
+1. Open a terminal and run docker image:
+    ```bash
+    docker run -p 12080:12080 ghcr.io/little-bear-labs/lbl-test-proxy:latest
+    ```
+2. In seperate terminal, run the application using the following command in the project repository:
+    ```bash
+    cargo run --release
+    ```
+3. On Completion of the program you may check or read the extracted file:
+    ```bash
+    $ ls
+    Cargo.lock  NOTES.md   src/     test1.result.json # extracted file
+    Cargo.toml  README.md  target/  tests/
+    ```
+    or
+    ```bash
+    cat test1.result.json
+    ```
+    **Possible Error Handling**:
+    - Docker Not Running: If Docker is not running, you'll likely encounter errors related to Docker commands. Make sure Docker is up and running before executing the application.
+
+    - Failed to Connect to TCP Server: If the application fails to connect to the TCP server, ensure that the server address and port are correctly configured. Check network connectivity and firewall settings if necessary.
+
+    - Failed to Extract Result File: If the application fails to extract the result file from the Docker container, check Docker permissions and ensure that the container ID is correctly retrieved.
+
+    - Dependency Errors: If you encounter any dependency-related errors during the build process, make sure you have all necessary dependencies installed and that your Rust toolchain is up to date.
+
+    - Compilation Errors: If you encounter compilation errors during the build process, check the project's dependencies and ensure that all code is correctly formatted and up to date.
+
+### Testing the Application:
+- To run the integration tests and unit tests, use the following command:
+    ```bash
+    cargo test
+    ```
+### Additional Notes
+- Ensure that the Docker image specified in the docker.rs module exists and is accessible from your Docker registry.
