@@ -1,0 +1,19 @@
+[package]
+name = "intern-screener-2024-public"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.11.3"
+log = "0.4.21"
+serde = { version = "1.0.202", features = ["derive"] }
+serde_json = "1.0.117"
+rayon = "1.8"
+indicatif = "0.17.8"
+
+
+[dependencies.uuid]
+version = "1.8.0"
+features = [
+    "v4",
+]
