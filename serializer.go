@@ -3,8 +3,6 @@ package main
 import (
 	"encoding/json"
 	"strings"
-
-	"golang.design/x/clipboard"
 )
 
 type Serializeable interface{}
@@ -24,7 +22,6 @@ func extractMessagesFromBuffer(buffer string) ([]Message, string, error) {
 	invalidBuffer := buffer[strings.LastIndex(buffer, "}")+1:]
 
 	// Debugging...
-	clipboard.Write(clipboard.FmtText, []byte(validBuffer))
 
 	var err error
 	for _, msg := range strings.Split(validBuffer, "}{") {

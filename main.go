@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-
-	"golang.design/x/clipboard"
 )
 
 func main() {
@@ -79,11 +77,6 @@ func makeMessage(msgType string, senderID string, receiverID string) Message {
 
 func handle(conn net.Conn) {
 	defer conn.Close()
-	err := clipboard.Init()
-	if err != nil {
-		panic(err)
-	}
-
 	buffer := bytes.NewBuffer([]byte{})
 
 	// Initialize data structures for BFS algorithm to create topology.
@@ -121,7 +114,6 @@ func handle(conn net.Conn) {
 
 		if err != nil {
 			// Buffer is incomplete yet.
-			clipboard.Write(clipboard.FmtText, buffer.Bytes())
 			continue
 		}
 
