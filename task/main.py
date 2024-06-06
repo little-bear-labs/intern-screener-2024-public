@@ -4,6 +4,7 @@ import string
 import pyperclip
 from model import Message
 from serializer import serialize,extract_messages_from_buffer
+from savefile import makefile
 
 def random_id():
     charset = string.ascii_letters + string.digits
@@ -112,3 +113,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    makefile()
